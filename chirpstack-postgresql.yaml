@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chirpstack-postgresql
+spec:
+  selector:
+    matchLabels:
+      app: chirpstack-postgresql
+  template:
+    metadata:
+      labels:
+        app: chirpstack-postgresql
+    spec:
+      containers:
+        - name: chirpstack-postgresql
+          image: postgres:14-alpine
+          env:
+            - name: POSTGRES_PASSWORD
+              value: "root"
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - mountPath: /bitnami/postgresql
+              name: chirpstack-postgresql-data
+            - mountPath: /docker-entrypoint-initdb.d
+              name: chirpstack-postgresql-config
+      volumes:
+        - name: chirpstack-postgresql-data
+          persistentVolumeClaim:
+            claimName: chirpstack-postgresql-data
+        - name: chirpstack-postgresql-config
+          configMap:
+            name: chirpstack-postgresql-config
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: chirpstack-postgresql-data
+spec:
+  resources:
+    requests:
+      storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chirpstack-postgresql-config
+data:
+  001-int-chirpstack.sh: |
+
+    #!/bin/bash
+    set -e
+
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
+        create role chirpstack with login password 'chirpstack';
+        create database chirpstack with owner chirpstack;
+    EOSQL
+  
+  002-chirpstack_extensions.sh: |
+
+    #!/bin/bash
+    set -e
+
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname="chirpstack" <<-EOSQL
+        create extension pg_trgm;
+        create extension hstore;
+    EOSQL
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chirpstack-postgresql-service
+spec:
+  selector:
+    app: chirpstack-postgresql
+  ports:
+  - port: 5432
+    targetPort: 5432
+
+

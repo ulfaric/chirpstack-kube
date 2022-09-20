@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chirpstack-mosquitto
+spec:
+  selector:
+    matchLabels:
+      app: chirpstack-mosquitto
+  template:
+    metadata:
+      labels:
+        app: chirpstack-mosquitto
+    spec:
+      containers:
+      - name: chirpstack-mosquitto
+        image: eclipse-mosquitto:2
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 1883
+        volumeMounts:
+          - name: chirpstack-mosquitto-config
+            mountPath: /mosquitto/config/
+      volumes:
+        - name: chirpstack-mosquitto-config
+          configMap:
+            name: chirpstack-mosquitto-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chirpstack-mosquitto-config
+data:
+  mosquitto.conf: |
+    listener 1883
+    allow_anonymous true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chirpstack-mosquitto-service
+spec:
+  selector:
+    app: chirpstack-mosquitto
+  ports:
+  - port: 1883
+    targetPort: 1883
+
+
+

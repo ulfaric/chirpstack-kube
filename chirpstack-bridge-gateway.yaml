@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chirpstack-bridge-gateway
+spec:
+  selector:
+    matchLabels:
+      app: chirpstack-bridge-gateway
+  template:
+    metadata:
+      labels:
+        app: chirpstack-bridge-gateway
+    spec:
+      containers:
+        - name: chirpstack-bridge-gateway
+          image: chirpstack/chirpstack-gateway-bridge:4.0.0
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 1700
+              protocol: UDP
+          volumeMounts:
+            - name: chirpstack-bridge-gateway-config
+              mountPath: /etc/chirpstack-gateway-bridge
+      volumes:
+        - name: chirpstack-bridge-gateway-config
+          configMap:
+            name: chirpstack-bridge-gateway-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chirpstack-bridge-gateway-config
+data:
+  chirpstack-gateway-bridge.toml: |
+    # See https://www.chirpstack.io/gateway-bridge/install/config/ for a full
+    # configuration example and documentation.
+
+    [integration.mqtt.auth.generic]
+    servers=["tcp://chirpstack-mosquitto-service:1883"]
+    username=""
+    password=""
+
+    [integration.mqtt]
+    event_topic_template="au915_0/gateway/{{ .GatewayID }}/event/{{ .EventType }}"
+    state_topic_template="au915_0/gateway/{{ .GatewayID }}/state/{{ .StateType }}"
+    command_topic_template="au915_0/gateway/{{ .GatewayID }}/command/#"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chirpstack-bridge-gateway-service
+spec:
+  selector:
+    app: chirpstack-bridge-gateway
+  ports:
+  - port: 1700
+    targetPort: 1700

@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chirpstack-redis
+spec:
+  selector:
+    matchLabels:
+      app: chirpstack-redis
+  template:
+    metadata:
+      labels:
+        app: chirpstack-redis
+    spec:
+      containers:
+      - name: chirpstack-redis
+        image: redis:7
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+          - name: chirpstack-redis-data
+            mountPath: /data
+      volumes:
+        - name: chirpstack-redis-data
+          persistentVolumeClaim:
+            claimName: chirpstack-redis-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: chirpstack-redis-data
+spec:
+  resources:
+    requests:
+      storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chirpstack-redis-service
+spec:
+  selector:
+    app: chirpstack-redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+
+
